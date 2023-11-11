@@ -1,0 +1,353 @@
+
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>tm9 (2)</title>
+  <style>
+    body {
+      font-family: montserrat, sans-serif;
+      font-size: 12px;
+      background-color: rgb(239, 239, 239);
+      text-align: center;
+    }
+
+    h1 {
+      text-align: center;
+      font-weight: 800;
+      font-size: 300%;
+      color: #030201;
+    }
+
+    label {
+      font-weight: bold;
+      display: inline-block; /* Agar label dapat diatur secara horizontal */
+      width: 120px; /* Sesuaikan lebar sesuai kebutuhan */
+      text-align: center; /* Mengatur teks label agar berada di tengah */
+    }
+
+    /* Tambahkan CSS untuk input */
+    input[type="text"],
+    input[type="email"] {
+      width: 20%; /* Mengisi seluruh lebar yang tersedia */
+      padding: 2.5px; /* Sesuaikan dengan kebutuhan Anda */
+    }
+    
+
+    #url {
+      font-family: montserrat, sans-serif;
+      width: 30%;
+      padding: 10px;
+      margin: 10px auto;
+      display: block;
+      background-color: rgb(187, 230, 249), 239, 249;
+      color: #bf6363;
+      border-radius: 10px;
+      border: 3px solid #65451f;
+      text-align : center;
+    }
+
+    button {
+      font-family: montserrat, sans-serif;
+      font-weight: bold;
+      display: block;
+      margin: 0 auto;
+      padding: 10px 20px;
+      background-color: rgb(35, 21, 21) 21, 18;
+      color: #d76b6b;
+      border: none;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+
+    button:hover {
+      background-color: #e3b98d;
+    }
+
+    #table-container {
+      display: none;
+    }
+
+    table {
+      font-family: montserrat, sans-serif;
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 10px;
+    }
+
+    th, td, tr {
+      border: 1px solid #3f2305;
+      padding: 5px;
+      text-align: center;
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    th {
+      border: 1px solid #3f2305;
+      background-color: #65451f;
+      color: #f9e0bb;
+    }
+
+    .table-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 10px;
+    }
+
+    .table-controls-left {
+      display: flex;
+      align-items: center;
+    }
+
+    .table-controls-right {
+      display: flex;
+      align-items: center;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Form Data Pribadi</h1>
+  <input type="text" id="url" placeholder="Please enter the URL here" value="https://devinaaa.alwaysdata.net/api-3-2/csv2json.php">
+  <button onclick="fetchData()">Submit</button>
+
+  <!-- Form dengan field Id, F_Name, L_Name, Email, Email2, dan Profesi -->
+  <form id="data-form">
+    <label for="Id">id:</label>
+    <input type="text" id="Id" name="Id" required><br><br>
+
+    <label for="F_Name">F_Name:</label>
+    <input type="text" id="F_Name" name="F_Name" required><br><br>
+
+    <label for="L_Name">L_Name:</label>
+    <input type="text" id="L_Name" name="L_Name" required><br><br>
+
+    <label for="Email">email:</label>
+    <input type="email" id="Email" name="Email" required><br><br>
+
+    <label for="Email2">email2:</label>
+    <input type="email" id="Email2" name="Email2" required><br><br>
+
+    <label for="Profesi">profesi:</label>
+    <input type="text" id="Profesi" name="Profesi" required><br><br>
+
+    <button type="button" onclick="addData()">Tambahkan Data</button>
+  </form>
+
+  <div id="table-container">
+    <div class="table-controls">
+      <div class="table-controls-left">
+        <span>Tampilkan</span>
+        <select id="entries-select" onchange="entriesPerPage = parseInt(this.value); currentPage = 1; displayTableData(); updatePagination();">
+          <option value = "10">10</option>
+          <option value = "20">20</option>
+          <option value = "25">25</option>
+          <option value = "50">50</option>
+        </select>
+        <span>entri</span>
+      </div>
+
+      <div class="table-controls-right">
+        <span>Cari: </span>
+        <input type="text" id="search-input" onkeyup="searchTable()" />
+      </div>
+    </div>
+
+    <table id="data-table">
+      <thead>
+      <tr>
+        <th>No</th>
+        <th>id</th>
+        <th>F_Name</th>
+        <th>L_Name</th>
+        <th>email1</th>
+        <th>email2</th>
+        <th>Profesi</th>
+      </tr>
+      </thead>
+      <tbody id = "data-body"></tbody>
+    </table>
+  </div>
+
+  <div id="pagination">
+    <button id="pagination-prev" onclick="changePage(-1);" style="float: left;">Sebelumnya</button>
+    <span id="pagination-info" style="display: inline-block; margin: 0 auto;"></span>
+    <button id="pagination-next" onclick="changePage(1);" style="float: right;">Selanjutnya</button>
+  </div>
+
+  <script>
+    // Tambahkan variabel untuk menyimpan data tambahan
+    const additionalData = [];
+    let currentPage = 1;
+    let entriesPerPage = 10;
+
+    // menyimpan variabel data tabel yang sedang ditampilkan
+    let displayedData = [];
+  
+    function fetchData() {
+      const urlInput = document.getElementById('url').value;
+      const tableContainer = document.getElementById('table-container');
+      const dataTable = document.getElementById('data-table');
+      const xhr = new XMLHttpRequest();
+      xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4 && xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          // Gabungkan data url dgn data form
+          const combinedData = [...data, ...additionalData];
+          dataTable.innerHTML = '';
+          const headerRow = document.createElement('tr');
+          for (const key in combinedData[0]) {
+            if (combinedData[0].hasOwnProperty(key)) {
+              const headerCell = document.createElement('th');
+              headerCell.textContent = key;
+              headerRow.appendChild(headerCell);
+            }
+          }
+          dataTable.appendChild(headerRow);
+          combinedData.forEach(function (item) {
+            const dataRow = document.createElement('tr');
+            for (const key in item) {
+              if (item.hasOwnProperty(key)) {
+                const dataCell = document.createElement('td');
+                dataCell.textContent = item[key];
+                dataRow.appendChild(dataCell);
+              }
+            }
+            dataTable.appendChild(dataRow);
+          });
+  
+          // Tampilkan tabel
+          tableContainer.style.display = 'block';
+        }
+      };
+      xhr.open('GET', urlInput, true);
+      xhr.send();
+    }
+  
+    function addData() {
+      const id = document.getElementById('Id').value;
+      const fName = document.getElementById('F_Name').value;
+      const lName = document.getElementById('L_Name').value;
+      const email = document.getElementById('Email').value;
+      const email2 = document.getElementById('Email2').value;
+      const profesi = document.getElementById('Profesi').value;
+  
+      // Tambahkan data baru ke dalam variabel
+      const newData = { Id: id, "F_Name": fName, "L_Name": lName, email1: email, email2: email2, profesi: profesi };
+      additionalData.push(newData);
+      displayAdditionalData(newData);
+
+      
+      // Reset nilai formulir setelah menambahkan data
+      document.getElementById('Id').value = '';
+      document.getElementById('F_Name').value = '';
+      document.getElementById('L_Name').value = '';
+      document.getElementById('Email').value = '';
+      document.getElementById('Email2').value = '';
+      document.getElementById('Profesi').value = '';
+    }
+
+    // Tambahkan fungsi untuk menampilkan data tambahan di tabel
+    function displayAdditionalData(newData) {
+      const dataTable = document.getElementById('data-table');
+      const dataRow = document.createElement('tr');
+      for (const key in newData) {
+        if (newData.hasOwnProperty(key)) {
+          const dataCell = document.createElement('td');
+          dataCell.textContent = newData[key];
+          dataRow.appendChild(dataCell);
+        }
+      }
+      dataTable.appendChild(dataRow);
+      displayTableData();
+      updatePagination();
+    }
+  
+    function displayTableData() {
+    // Hitung indeks awal dan akhir data yang akan ditampilkan
+    const startIndex = (currentPage - 1) * entriesPerPage;
+    const endIndex = startIndex + entriesPerPage;
+    
+    // Ambil tabel dan data
+    const dataTable = document.getElementById('data-table');
+    const data = Array.from(dataTable.getElementsByTagName('tr'));
+
+    // Sembunyikan semua baris data
+    data.forEach(row => {
+      row.style.display = 'none';
+    });
+
+    // Tampilkan data yang sesuai dengan halaman saat ini
+    for (let i = startIndex; i < endIndex && i < data.length; i++) {
+      data[i].style.display = '';
+    }
+  }
+
+  function updatePagination() {
+    const dataTable = document.getElementById('data-table');
+    const totalEntries = dataTable.getElementsByTagName('tr').length - 1; // Kurangi satu untuk header
+
+    const totalPages = Math.ceil(totalEntries / entriesPerPage);
+    const paginationInfo = `Menampilkan ${currentPage} - ${Math.min(currentPage + entriesPerPage - 1, totalEntries)} dari ${totalEntries} entri`;
+
+    document.getElementById('pagination-info').textContent = paginationInfo;
+    document.getElementById('pagination-prev').disabled = currentPage === 1;
+    document.getElementById('pagination-next').disabled = currentPage === totalPages;
+  }
+
+  function sortTable(columnIndex) {
+    const dataTable = document.getElementById('data-table');
+    const rows = Array.from(dataTable.getElementsByTagName('tr'));
+    
+    rows.sort((a, b) => {
+      const valueA = a.getElementsByTagName('td')[columnIndex].textContent;
+      const valueB = b.getElementsByTagName('td')[columnIndex].textContent;
+
+      return valueA.localeCompare(valueB);
+    });
+
+    dataTable.innerHTML = '';
+    rows.forEach(row => {
+      dataTable.appendChild(row);
+    });
+
+    displayTableData();
+    updatePagination();
+  }
+
+  function searchTable() {
+    const searchInput = document.getElementById('search-input').value.toLowerCase();
+    const dataTable = document.getElementById('data-table');
+    const rows = Array.from(dataTable.getElementsByTagName('tr'));
+
+    rows.shift(); // Hapus header
+
+    rows.forEach(row => {
+      const cells = row.getElementsByTagName('td');
+      const rowText = Array.from(cells).map(cell => cell.textContent).join(' ').toLowerCase();
+      if (rowText.includes(searchInput)) {
+        row.style.display = '';
+      } else {
+        row.style.display = 'none';
+      }
+    });
+  }
+
+  function changePage(offset) {
+    currentPage += offset;
+    if (currentPage < 1) {
+      currentPage = 1;
+    }
+    displayTableData();
+    updatePagination();
+}
+
+  window.onload = () => {
+    displayTableData();
+    updatePagination();
+  }
+  </script>  
+</body>
+</html>
